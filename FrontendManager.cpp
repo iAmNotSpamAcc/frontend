@@ -1,23 +1,4 @@
-#include "FrontendManager.h"
-
-
-FrontendManager::FrontendManager() {
-    library = {
-    {1, "Книга 1", "Автор 1"},
-    {2, "Книга 2", "Автор 2"},
-    {3, "Книга 3", "Автор 3"},
-    {4, "Книга 4", "Автор 4"},
-    {5, "Книга 5", "Автор 5"},
-    {6, "Книга 6", "Автор 6"},
-    {7, "Книга 7", "Автор 7"},
-    {8, "Книга 8", "Автор 8"},
-    {9, "Книга 9", "Автор 9"},
-    {10, "Книга 10", "Автор 10"},
-    {11, "Книга 11", "Автор 11"},
-    {12, "Книга 12", "Автор 12"},
-    };
-}
-
+#include "FrontendManager.hpp"
 
 
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
@@ -25,51 +6,18 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     return size * nmemb;
 }
 
-
-
-
-bool FrontendManager::userExists(const std::vector<User>& users, int id) {
-    return std::find_if(users.begin(), users.end(), [id](const User& user) {
-        return user.id == id;
-        }) != users.end();
-}
-
-Permission FrontendManager::getUserPermission(const std::vector<User>& users, int id) {
-    auto it = std::find_if(users.begin(), users.end(), [id](const User& user) {
-        return user.id == id;
-        });
-
-    if (it != users.end()) {
-        return it->permission;
-    }
-    return Permission::GUEST;
-}
-
-User FrontendManager::createUser(int id, const std::string& name, const std::string& surname,
-    const std::string& username, const std::string& email, Permission permission) {
-    User newUser;
-    newUser.id = id;
-    newUser.name = name;
-    newUser.surname = surname;
-    newUser.username = username;
-    newUser.email = email;
-    newUser.permission = permission;
-    return newUser;
-}
-
-
 json FrontendManager::createAdminKeyboard() {
     return {
         {"inline_keyboard", {
             {
-                {{"text", "Добавить книгу"}, {"callback_data", "add_book"}},
-                {{"text", "Удалить книгу"}, {"callback_data", "remove_book"}}
+                {{"text", "Р”РѕР±Р°РІРёС‚СЊ РєРЅРёРіСѓ"}, {"callback_data", "add_book"}},
+                {{"text", "РЈРґР°Р»РёС‚СЊ РєРЅРёРіСѓ"}, {"callback_data", "remove_book"}}
             },
             {
-                {{"text", "Состав библиотеки"}, {"callback_data", "bookshelf"}}
+                {{"text", "РЎРѕСЃС‚Р°РІ Р±РёР±Р»РёРѕС‚РµРєРё"}, {"callback_data", "bookshelf"}}
             },
             {
-                {{"text", "Заявки"}, {"callback_data", "application"}}
+                {{"text", "Р—Р°СЏРІРєРё"}, {"callback_data", "application"}}
             }
         }}
     };
@@ -79,11 +27,11 @@ json FrontendManager::createUserKeyboard() {
     return {
         {"inline_keyboard", {
             {
-                {{"text", "Взять книгу"}, {"callback_data", "app_borrow"}},
-                {{"text", "Сдать книгу"}, {"callback_data", "app_return"}}
+                {{"text", "Р’Р·СЏС‚СЊ РєРЅРёРіСѓ"}, {"callback_data", "app_borrow"}},
+                {{"text", "РЎРґР°С‚СЊ РєРЅРёРіСѓ"}, {"callback_data", "app_return"}}
             },
             {
-                {{"text", "Мои книги"}, {"callback_data", "mybooks"}}
+                {{"text", "РњРѕРё РєРЅРёРіРё"}, {"callback_data", "mybooks"}}
             }
         }}
     };
@@ -93,7 +41,7 @@ json FrontendManager::createGuestKeyboard() {
     return {
         {"inline_keyboard", {
             {
-                {{"text", "Оставить заявку"}, {"callback_data", "app_reg"}}
+                {{"text", "РћСЃС‚Р°РІРёС‚СЊ Р·Р°СЏРІРєСѓ"}, {"callback_data", "app_reg"}}
             }
         }}
     };
@@ -125,211 +73,236 @@ void FrontendManager::sendMessage(const std::string& chat_id, const std::string&
     }
 }
 
-
 void FrontendManager::showBooks(const std::string& chat_id, int page, std::string action) {
     const int booksPerPage = 10;
-    int totalBooks = library.size();
-    int totalPages = (totalBooks + booksPerPage - 1) / booksPerPage; // Общее количество страниц
-
-    // Проверка на допустимость страницы
-    if (page < 1) page = 1;
-    if (page > totalPages) page = totalPages;
-
-    std::string message = "Список книг (Страница " + std::to_string(page) + " из " + std::to_string(totalPages) + "):\n";
-    // Создание клавиатуры для книг на текущей странице
-    json inline_keyboard = json::array();
-    for (int i = (page - 1) * booksPerPage; i < (((page * booksPerPage) < (totalBooks)) ? (page * booksPerPage) : (totalBooks)); ++i) {
-        // Создание кнопки для каждой книги
-        json button = {
-            {"text", library[i].title + " - " + library[i].author},
-            {"callback_data", action + "_selected_book_" + std::to_string(library[i].id)}
-        };
-        // Добавление кнопки в новый ряд
-        json row = json::array();
-        row.push_back(button);
-        inline_keyboard.push_back(row);
-    }
-
-    // Если есть книги, добавляем их в клавиатуру
-    if (!inline_keyboard.empty()) {
-        json reply_markup = {
-            {"inline_keyboard", inline_keyboard}
-        };
-
-        // Добавление кнопок для навигации между страницами
-        json navigation_row = json::array();
-        if (page > 1) {
-            navigation_row.push_back({
-                {"text", "Назад"},
-                {"callback_data", action + "_books_page_" + std::to_string(page - 1)}
-                });
-        }
-        if (page < totalPages) {
-            navigation_row.push_back({
-                {"text", "Вперед"},
-                {"callback_data", action + "_books_page_" + std::to_string(page + 1)}
-                });
-        }
-        // Добавление навигационного ряда только если он не пуст
-        if (!navigation_row.empty()) {
-            reply_markup["inline_keyboard"].push_back(navigation_row);
-        }
-
-        sendMessage(chat_id, message, reply_markup);
-    }
-    else {
-        // Если нет книг на странице, отправляем сообщение об этом
-        sendMessage(chat_id, "На этой странице нет книг.");
-    }
-}
-
-
-void FrontendManager::showMainMenu(const std::string& chat_id) {
-    Permission userPermission = getUserPermission(users, std::stoi(chat_id));
-
-    if (userPermission == Permission::ADMIN) {
-        sendMessage(chat_id, "Добро пожаловать, админ!", createAdminKeyboard());
-    }
-    else if (userPermission == Permission::USER) {
-        sendMessage(chat_id, "Добро пожаловать, читатель!", createUserKeyboard());
-    }
-    else {
-        sendMessage(chat_id, "Добро пожаловать, Гость! Вас пока нет в базе, оставьте заявку на регистрацию", createGuestKeyboard());
-    }
-}
-
-
-void FrontendManager::handleApplications(const std::string& chat_id) {
+    int totalBooks = 0;
     
-    if (!queueRequest.empty()) {
-        sendMessage(chat_id, "Есть новые заявки. Хотите подтвердить или отклонить?");
-
-        json reply_markup = {
-            {"inline_keyboard", {
-                {
-                    {{"text", "Подтвердить"}, {"callback_data", "confirm_request"}},
-                    {{"text", "Отклонить"}, {"callback_data", "reject_request"}}
-                }
-            }}
-        };
-        sendMessage(chat_id, "Выберите действие:", reply_markup);
+    std::vector<Book*> library;
+    
+    if(action=="remove_book"){
+        
+        library=Library.getAllLibraryBooks();
+        totalBooks = library.size();
+    }else if(action=="app_borrow"){
+        library=Library.getAvailableBooks();
+        totalBooks = library.size();
+    }else if(action=="app_return"){
+        library=Library.getBooksToReturn(std::stoi(chat_id));
+        totalBooks = library.size();
+    }else if(action=="mybooks"){
+        library=Library.getAllUserBooks(std::stoi(chat_id));
+        totalBooks = library.size();
     }
-    else {
-        sendMessage(chat_id, "Заявки обработаны.");
-    }
-}
-
-
-void FrontendManager::handleCallbackQuery(const json& callbackQuery) {
-    if (!callbackQuery.contains("message") || !callbackQuery.contains("data")) {
-        std::cerr << "Invalid callback query format!" << std::endl;
-        return;
-    }
-
-    std::string chat_id = std::to_string(static_cast<long long>(callbackQuery["message"]["chat"]["id"]));
-    std::string callback_data = callbackQuery["data"];
-
-    std::cout << "Received callback data: " << callback_data << std::endl;
-
-    if (callback_data == "add_book") {
-        sendMessage(chat_id, "Введите название книги и автора через ';' (например, 'Книга1;Автор1').");
-    }
-    else if (callback_data == "remove_book") {
-        sendMessage(chat_id, "Выберите книгу для удаления:");
-        showBooks(chat_id, 1, "remove_book");
-    }
-    else if (callback_data == "bookshelf") {
-        sendMessage(chat_id, "Состав библиотеки.");
-    }
-    else if (callback_data == "app_borrow") {
-        sendMessage(chat_id, "Выберите книгу для заявки взятия:");
-        showBooks(chat_id, 1, "app_borrow");
-    }
-    else if (callback_data == "app_return") {
-        showBooks(chat_id, 1, "app_return");
-        sendMessage(chat_id, "Выберите книгу для заявки на возвращение:");
-    }
-    else if (callback_data == "mybooks") {
-        sendMessage(chat_id, "Выберите книгу для возвращения:");
-    }
-    else if (callback_data == "app_reg") {
-        sendMessage(chat_id, "Введите ваше имя:");
-        registrationStates[chat_id] = RegistrationState{ .step = 1 };
-    }
-    else if (callback_data == "application") {
-        handleApplications(chat_id);
-    }
-    else if (callback_data == "confirm_request") {
-        queueRequest.pop();
-        sendMessage(chat_id, "Заявка подтверждена");
-        handleApplications(chat_id);
-    }
-    else if (callback_data == "reject_request") {
-        queueRequest.pop();
-        sendMessage(chat_id, "Заявка отклонена");
-        handleApplications(chat_id);
-    }
-    else if (callback_data.starts_with("remove_book_books_page_")) {
-        int page = std::stoi(callback_data.substr(23)); // Извлечение номера страницы
-        showBooks(chat_id, page, "remove_book"); // Показать книги на новой странице
-    }
-    else if (callback_data.starts_with("remove_book_selected_book_")) {
-        int ID = std::stoi(callback_data.substr(26)); // Извлечение номера страницы
-        sendMessage(chat_id, ("Выбрана книга." + std::to_string(ID)));
-    }
-    else if (callback_data.starts_with("app_borrow_books_page_")) {
-        int page = std::stoi(callback_data.substr(22)); // Извлечение номера страницы
-        showBooks(chat_id, page, "app_borrow"); // Показать книги на новой странице
-    }
-    else if (callback_data.starts_with("app_borrow_selected_book_")) {
-        int ID = std::stoi(callback_data.substr(25)); // Извлечение номера страницы
-        sendMessage(chat_id, ("Выбрана книга " + std::to_string(ID)));
-    }
-    else if (callback_data.starts_with("app_return_books_page_")) {
-        int page = std::stoi(callback_data.substr(22)); // Извлечение номера страницы
-        showBooks(chat_id, page, "app_return"); // Показать книги на новой странице
-    }
-    else if (callback_data.starts_with("app_return_selected_book_")) {
-        int ID = std::stoi(callback_data.substr(25)); // Извлечение номера страницы
-        sendMessage(chat_id, ("Выбрана книга." + std::to_string(ID)));
-    }
-    else {
-        std::cerr << "Unknown callback data: " << callback_data << std::endl; // Логирование неизвестных данных
+    int totalPages = (totalBooks + booksPerPage - 1) / booksPerPage; // РћР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚СЂР°РЅРёС†
+    
+    // РџСЂРѕРІРµСЂРєР° РЅР° РґРѕРїСѓСЃС‚РёРјРѕСЃС‚СЊ СЃС‚СЂР°РЅРёС†С‹
+    if(totalBooks>0){
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        std::string message = "РЎРїРёСЃРѕРє РєРЅРёРі (РЎС‚СЂР°РЅРёС†Р° " + std::to_string(page) + " РёР· " + std::to_string(totalPages) + "):\n";
+        // РЎРѕР·РґР°РЅРёРµ РєР»Р°РІРёР°С‚СѓСЂС‹ РґР»СЏ РєРЅРёРі РЅР° С‚РµРєСѓС‰РµР№ СЃС‚СЂР°РЅРёС†Рµ
+        json inline_keyboard = json::array();
+        for (int i = (page - 1) * booksPerPage; i < (((page * booksPerPage) < (totalBooks)) ? (page * booksPerPage) : (totalBooks)); i++) {
+            // РЎРѕР·РґР°РЅРёРµ РєРЅРѕРїРєРё РґР»СЏ РєР°Р¶РґРѕР№ РєРЅРёРіРё
+            json button = {
+                {"text", library[i]->getAuthor() + " - " + library[i]->getTitle()},
+                {"callback_data", action + "_selected_book_" + std::to_string(library[i]->getId())}
+            };
+            // Р”РѕР±Р°РІР»РµРЅРёРµ РєРЅРѕРїРєРё РІ РЅРѕРІС‹Р№ СЂСЏРґ
+            json row = json::array();
+            row.push_back(button);
+            inline_keyboard.push_back(row);
+        }
+        
+        // Р•СЃР»Рё РµСЃС‚СЊ РєРЅРёРіРё, РґРѕР±Р°РІР»СЏРµРј РёС… РІ РєР»Р°РІРёР°С‚СѓСЂСѓ
+        if (!inline_keyboard.empty()) {
+            json reply_markup = {
+                {"inline_keyboard", inline_keyboard}
+            };
+            
+            // Р”РѕР±Р°РІР»РµРЅРёРµ РєРЅРѕРїРѕРє РґР»СЏ РЅР°РІРёРіР°С†РёРё РјРµР¶РґСѓ СЃС‚СЂР°РЅРёС†Р°РјРё
+            json navigation_row = json::array();
+            if (page > 1) {
+                navigation_row.push_back({
+                    {"text", "РќР°Р·Р°Рґ"},
+                    {"callback_data", action + "_books_page_" + std::to_string(page - 1)}
+                });
+            }
+            if (page < totalPages) {
+                navigation_row.push_back({
+                    {"text", "Р’РїРµСЂРµРґ"},
+                    {"callback_data", action + "_books_page_" + std::to_string(page + 1)}
+                });
+            }
+            // Р”РѕР±Р°РІР»РµРЅРёРµ РЅР°РІРёРіР°С†РёРѕРЅРЅРѕРіРѕ СЂСЏРґР° С‚РѕР»СЊРєРѕ РµСЃР»Рё РѕРЅ РЅРµ РїСѓСЃС‚
+            if (!navigation_row.empty()) {
+                reply_markup["inline_keyboard"].push_back(navigation_row);
+            }
+            
+            sendMessage(chat_id, message, reply_markup);
+        }
+        else {
+            // Р•СЃР»Рё РЅРµС‚ РєРЅРёРі РЅР° СЃС‚СЂР°РЅРёС†Рµ, РѕС‚РїСЂР°РІР»СЏРµРј СЃРѕРѕР±С‰РµРЅРёРµ РѕР± СЌС‚РѕРј
+            sendMessage(chat_id, "РќР° СЌС‚РѕР№ СЃС‚СЂР°РЅРёС†Рµ РЅРµС‚ РєРЅРёРі.");
+        }
+    }else{
+        sendMessage(chat_id, "РќР°С…СѓР№ С‚С‹ РїСЂРёС€РµР», СЏ С‚РµР±СЏ РЅРµ Р·РІР°Р», РєРЅРёРі РЅРµРјР°");
     }
 }
 
 
+    void FrontendManager::showMainMenu(const std::string& chat_id) {
+        UserRole Role=UserRole::Non;
+        
+        if(Library.userExists(std::stoi(chat_id))){
+           Role = Library.getUserById(std::stoi(chat_id))->getRole();
+        }
+        if (Role == UserRole::Admin) {
+            sendMessage(chat_id, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, Р°РґРјРёРЅ!", createAdminKeyboard());
+        }
+        else if (Role == UserRole::Reader) {
+            sendMessage(chat_id, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, С‡РёС‚Р°С‚РµР»СЊ!", createUserKeyboard());
+        }
+        else {
+            sendMessage(chat_id, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, Р“РѕСЃС‚СЊ! Р’Р°СЃ РїРѕРєР° РЅРµС‚ РІ Р±Р°Р·Рµ, РѕСЃС‚Р°РІСЊС‚Рµ Р·Р°СЏРІРєСѓ РЅР° СЂРµРіРёСЃС‚СЂР°С†РёСЋ", createGuestKeyboard());
+        }
+    }
+
+
+    void FrontendManager::handleApplications(const std::string& chat_id) {
+        
+        if (Library.getRequestQueueSize()>0) {
+            std::string text;
+            text=Library.getFirstRequestDetails();
+            sendMessage(chat_id, "Р—Р°СЏРІРєР° " +text);
+
+json reply_markup = {
+                {"inline_keyboard", {
+                    {
+                        {{"text", "РџРѕРґС‚РІРµСЂРґРёС‚СЊ"}, {"callback_data", "confirm_request"}},
+                        {{"text", "РћС‚РєР»РѕРЅРёС‚СЊ"}, {"callback_data", "reject_request"}}
+                    }
+                }}
+            };
+            sendMessage(chat_id, "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:", reply_markup);
+        }
+        else {
+            sendMessage(chat_id, "Р—Р°СЏРІРѕРє РЅРµС‚.");
+        }
+    }
+
+
+    void FrontendManager::handleCallbackQuery(const json& callbackQuery) {
+        if (!callbackQuery.contains("message") || !callbackQuery.contains("data")) {
+            std::cerr << "Invalid callback query format!" << std::endl;
+            return;
+        }
+
+        std::string chat_id = std::to_string(static_cast<long long>(callbackQuery["message"]["chat"]["id"]));
+        std::string callback_data = callbackQuery["data"];
+
+        std::cout << "Received callback data: " << callback_data << std::endl;
+
+if (callback_data == "add_book") {
+            sendMessage(chat_id, "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РєРЅРёРіРё Рё Р°РІС‚РѕСЂР° С‡РµСЂРµР· ';' (РЅР°РїСЂРёРјРµСЂ, 'РљРЅРёРіР°1;РђРІС‚РѕСЂ1').");
+        }
+        else if (callback_data == "remove_book") {
+            sendMessage(chat_id, "Р’С‹Р±РµСЂРёС‚Рµ РєРЅРёРіСѓ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ:");
+            showBooks(chat_id, 1, "remove_book");
+        }
+        else if (callback_data == "bookshelf") {
+            sendMessage(chat_id, "РЎРѕСЃС‚Р°РІ Р±РёР±Р»РёРѕС‚РµРєРё.");
+        }
+          else if (callback_data == "app_borrow") {
+              sendMessage(chat_id, "Р’С‹Р±РµСЂРёС‚Рµ РєРЅРёРіСѓ РґР»СЏ Р·Р°СЏРІРєРё РІР·СЏС‚РёСЏ:");
+              showBooks(chat_id, 1, "app_borrow");
+          }
+          else if (callback_data == "app_return") {
+              showBooks(chat_id, 1, "app_return");
+              sendMessage(chat_id, "Р’С‹Р±РµСЂРёС‚Рµ РєРЅРёРіСѓ РґР»СЏ Р·Р°СЏРІРєРё РЅР° РІРѕР·РІСЂР°С‰РµРЅРёРµ:");
+          }
+          else if (callback_data == "mybooks") {
+              sendMessage(chat_id, "РњРѕРё РєРЅРёРіРё:");
+              showBooks(chat_id, 1, "mybooks");
+          }
+          else if (callback_data == "app_reg") {
+              sendMessage(chat_id, "Р’РІРµРґРёС‚Рµ РІР°С€Рµ РёРјСЏ:");
+              registrationStates[chat_id] = RegistrationState{ .step = 1 };
+          }
+          else if (callback_data == "application") {
+              handleApplications(chat_id);
+          }
+          else if (callback_data == "confirm_request") {
+              Library.confirmRequest();
+              sendMessage(chat_id, "Р—Р°СЏРІРєР° РїРѕРґС‚РІРµСЂР¶РґРµРЅР°");
+              handleApplications(chat_id);
+          }
+          else if (callback_data == "reject_request") {
+              Library.denyRequest();
+              sendMessage(chat_id, "Р—Р°СЏРІРєР° РѕС‚РєР»РѕРЅРµРЅР°");
+              handleApplications(chat_id);
+          }
+          else if (callback_data.starts_with("remove_book_books_page_")) {
+              int page = std::stoi(callback_data.substr(23)); // РР·РІР»РµС‡РµРЅРёРµ РЅРѕРјРµСЂР° СЃС‚СЂР°РЅРёС†С‹
+              showBooks(chat_id, page, "remove_book"); // РџРѕРєР°Р·Р°С‚СЊ РєРЅРёРіРё РЅР° РЅРѕРІРѕР№ СЃС‚СЂР°РЅРёС†Рµ
+          }
+          else if (callback_data.starts_with("remove_book_selected_book_")) {
+              int ID = std::stoi(callback_data.substr(26)); // РР·РІР»РµС‡РµРЅРёРµ РЅРѕРјРµСЂР° СЃС‚СЂР°РЅРёС†С‹
+              sendMessage(chat_id, ("Р’С‹Р±СЂР°РЅР° РєРЅРёРіР°." + std::to_string(ID)));
+          }
+          else if (callback_data.starts_with("app_borrow_books_page_")) {
+              int page = std::stoi(callback_data.substr(22)); // РР·РІР»РµС‡РµРЅРёРµ РЅРѕРјРµСЂР° СЃС‚СЂР°РЅРёС†С‹
+              showBooks(chat_id, page, "app_borrow"); // РџРѕРєР°Р·Р°С‚СЊ РєРЅРёРіРё РЅР° РЅРѕРІРѕР№ СЃС‚СЂР°РЅРёС†Рµ
+          }
+          else if (callback_data.starts_with("app_borrow_selected_book_")) {
+              int ID = std::stoi(callback_data.substr(25)); // РР·РІР»РµС‡РµРЅРёРµ РЅРѕРјРµСЂР° СЃС‚СЂР°РЅРёС†С‹
+              sendMessage(chat_id, ("Р’С‹Р±СЂР°РЅР° РєРЅРёРіР° " + std::to_string(ID)));
+              Library.borrowBookById(std::stoi(chat_id),ID);
+          }
+          else if (callback_data.starts_with("app_return_books_page_")) {
+              int page = std::stoi(callback_data.substr(22)); // РР·РІР»РµС‡РµРЅРёРµ РЅРѕРјРµСЂР° СЃС‚СЂР°РЅРёС†С‹
+              showBooks(chat_id, page, "app_return"); // РџРѕРєР°Р·Р°С‚СЊ РєРЅРёРіРё РЅР° РЅРѕРІРѕР№ СЃС‚СЂР°РЅРёС†Рµ
+          }
+          else if (callback_data.starts_with("app_return_selected_book_")) {
+              int ID = std::stoi(callback_data.substr(25)); // РР·РІР»РµС‡РµРЅРёРµ РЅРѕРјРµСЂР° СЃС‚СЂР°РЅРёС†С‹
+              sendMessage(chat_id, ("Р’С‹Р±СЂР°РЅР° РєРЅРёРіР°." + std::to_string(ID)));
+              Library.returnBookById(ID);
+          }
+          else {
+              std::cerr << "Unknown callback data: " << callback_data << std::endl; // Р›РѕРіРёСЂРѕРІР°РЅРёРµ РЅРµРёР·РІРµСЃС‚РЅС‹С… РґР°РЅРЅС‹С…
+          }
+      }
 
 void FrontendManager::handleRegistration(const std::string& chat_id, const std::string& text) {
     auto it = registrationStates.find(chat_id);
 
-    if (it != registrationStates.end()) {
+if (it != registrationStates.end()) {
         RegistrationState& state = it->second;
-
-        switch (state.step) {
+        
+switch (state.step) {
         case 1:
             state.name = text;
-            sendMessage(chat_id, "Введите вашу фамилию:");
+            sendMessage(chat_id, "Р’РІРµРґРёС‚Рµ РІР°С€Сѓ С„Р°РјРёР»РёСЋ:");
             state.step++;
             break;
         case 2:
             state.surname = text;
-            sendMessage(chat_id, "Введите ваш никнейм:");
+            sendMessage(chat_id, "Р’РІРµРґРёС‚Рµ РІР°С€ РЅРёРєРЅРµР№Рј:");
             state.step++;
             break;
         case 3:
             state.username = text;
-            sendMessage(chat_id, "Введите вашу почту:");
+            sendMessage(chat_id, "Р’РІРµРґРёС‚Рµ РІР°С€Сѓ РїРѕС‡С‚Сѓ:");
             state.step++;
             break;
         case 4:
             state.email = text;
-            users.push_back(createUser(std::stoi(chat_id), state.name, state.surname, state.username, state.email, Permission::USER));
-            sendMessage(chat_id, "Спасибо за регистрацию! Вы добавлены в базу как пользователь.");
+            Library.pushUserRequest(std::stoi(chat_id), state.name, state.surname, state.username, state.email);
+            sendMessage(chat_id, "РЎРїР°СЃРёР±Рѕ Р·Р° СЂРµРіРёСЃС‚СЂР°С†РёСЋ! Р—Р°СЏРІРєР° РѕС‚РїСЂР°РІР»РµРЅР°.");
             registrationStates.erase(chat_id);
             break;
         default:
-            sendMessage(chat_id, "Что-то пошло не так. Попробуйте снова.");
+            sendMessage(chat_id, "Р§С‚Рѕ-С‚Рѕ РїРѕС€Р»Рѕ РЅРµ С‚Р°Рє. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.");
             registrationStates.erase(chat_id);
             break;
         }
@@ -338,7 +311,7 @@ void FrontendManager::handleRegistration(const std::string& chat_id, const std::
         showMainMenu(chat_id);
     }
     else {
-        sendMessage(chat_id, "Неизвестная команда.");
+        sendMessage(chat_id, "РќРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°.");
     }
 }
 
@@ -376,16 +349,21 @@ void FrontendManager::getUpdates(int& last_update_id) {
                     std::string text = result["message"]["text"];
                     std::string chat_id = std::to_string(static_cast<long long>(result["message"]["chat"]["id"]));
                     if (text == "/start") {
-                        if (userExists(users, static_cast<int>(result["message"]["chat"]["id"]))) {
-                            if (getUserPermission(users, static_cast<int>(result["message"]["chat"]["id"])) == Permission::ADMIN) {
-                                sendMessage(chat_id, "Добро пожаловать, админ!", createAdminKeyboard());
+                        
+                        
+                        if (Library.userExists(static_cast<int>(result["message"]["chat"]["id"]))) {
+                            UserRole Role=UserRole::Non;
+                            Role = Library.getUserById(std::stoi(chat_id))->getRole();
+                            
+                            if (Role == UserRole::Admin) {
+                                sendMessage(chat_id, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, Р°РґРјРёРЅ!", createAdminKeyboard());
                             }
-                            else if (getUserPermission(users, static_cast<int>(result["message"]["chat"]["id"])) == Permission::USER) {
-                                sendMessage(chat_id, "Добро пожаловать, читатель!", createUserKeyboard());
+                            else if (Role == UserRole::Reader) {
+                                sendMessage(chat_id, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, С‡РёС‚Р°С‚РµР»СЊ!", createUserKeyboard());
                             }
                         }
                         else {
-                            sendMessage(chat_id, "Добро пожаловать, Гость! Вас пока нет в базе, оставьте заявку на регистрацию", createGuestKeyboard());
+                            sendMessage(chat_id, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, Р“РѕСЃС‚СЊ! Р’Р°СЃ РїРѕРєР° РЅРµС‚ РІ Р±Р°Р·Рµ, РѕСЃС‚Р°РІСЊС‚Рµ Р·Р°СЏРІРєСѓ РЅР° СЂРµРіРёСЃС‚СЂР°С†РёСЋ", createGuestKeyboard());
                         }
                     }
                     else if (registrationStates.find(chat_id) != registrationStates.end()) {
@@ -403,14 +381,10 @@ void FrontendManager::getUpdates(int& last_update_id) {
     }
 }
 
-
 void FrontendManager::run() {
     int last_update_id = 0;
 
-    users.push_back(createUser(349425708, "j;)hn", "D:(e", "Tranqumentary", "rtemfgh@gmail.com", Permission::USER));
-    users.push_back(createUser(2, "Петр", "Петров", "petrpetrov", "petr@example.com", Permission::USER));
-
-    while (true) {
+while (true) {
         getUpdates(last_update_id);
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
