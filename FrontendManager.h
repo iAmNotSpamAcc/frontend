@@ -9,7 +9,11 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
-#pragma execution_character_set("utf-8")
+#include "Library.hpp"
+#include "ElectronicBook.hpp"
+#include "PhysicalBook.hpp"
+#include "Book.hpp"
+#include "UserManager.hpp"
 
 using json = nlohmann::json;
 
@@ -20,54 +24,24 @@ enum class Permission {
     GUEST
 };
 
-struct User {
-    int id;
-    std::string name;
-    std::string surname;
-    std::string username;
-    std::string email;
-    Permission permission;
-    std::vector<int> borrowedBooks; // Список ID книг, которые пользователь взял
-};
 
 struct RegistrationState {
     std::string name;
     std::string surname;
     std::string username;
     std::string email;
-    int step;   // 0 - старт, 1 - имя, 2 - фамилия, 3 - никнейм, 4 - почта
-};
-
-struct RequestQueue {
-    void confirmRequest();
-    void denyRequest();
-    int getRequestQueueSize();
-    std::string getFirstRequestDetails();
-};
-
-struct Book {
-    int id;
-    std::string title;
-    std::string author;
+    int step;   // 0 - СЃС‚Р°СЂС‚, 1 - РёРјСЏ, 2 - С„Р°РјРёР»РёСЏ, 3 - РЅРёРєРЅРµР№Рј, 4 - РїРѕС‡С‚Р°
 };
 
 
 class FrontendManager {
 public:
+    FrontendManager(LibrarySystem& lib) : Library(lib) {}
     void run();
-    FrontendManager();
 
 private:
-    std::vector<Book> library;
-    const std::string TOKEN = "8147709261:AAGDZuVoDVQOvWw412Ypo3dbrBbGcckLyug"; // Замените на ваш токен бота
-    std::vector<User> users;
-    std::queue< RequestQueue> queueRequest;
+    const std::string TOKEN = ""; // Р—Р°РјРµРЅРёС‚Рµ РЅР° РІР°С€ С‚РѕРєРµРЅ Р±РѕС‚Р°
     std::unordered_map<std::string, RegistrationState> registrationStates;
-    //size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
-    bool userExists(const std::vector<User>& users, int id);
-    Permission getUserPermission(const std::vector<User>& users, int id);
-    User createUser(int id, const std::string& name, const std::string& surname,
-        const std::string& username, const std::string& email, Permission permission);
     json createAdminKeyboard();
     json createUserKeyboard();
     json createGuestKeyboard();
@@ -78,4 +52,5 @@ private:
     void handleCallbackQuery(const json& callbackQuery);
     void handleRegistration(const std::string& chat_id, const std::string& text);
     void getUpdates(int& last_update_id);
+    LibrarySystem& Library;
 };
